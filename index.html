@@ -1,34 +1,194 @@
-<script>
-    const helmet = document.getElementById("helmet")
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
 
-    let targetX = 0
-    let targetY = 75
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    />
 
-    let currentX = 0
-    let currentY = 75
+    <title>Planeta Novo — Helmet 3D</title>
 
-    window.addEventListener("mousemove", (event) => {
-        const x = (event.clientX / window.innerWidth - 0.5) * 2
-        const y = (event.clientY / window.innerHeight - 0.5) * 2
+    <script
+        type="module"
+        src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js">
+    </script>
 
-        targetX = x * 14
-        targetY = 75 + y * 5
-    })
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: transparent !important;
+        }
 
-    window.addEventListener("mouseleave", () => {
-        targetX = 0
-        targetY = 75
-    })
+        model-viewer {
+            position: absolute;
+            inset: 0;
 
-    function animate() {
-        currentX += (targetX - currentX) * 0.05
-        currentY += (targetY - currentY) * 0.05
+            width: 100%;
+            height: 100%;
 
-        helmet.cameraOrbit =
-            `${currentX}deg ${currentY}deg 105%`
+            background: transparent !important;
 
-        requestAnimationFrame(animate)
-    }
+            --poster-color: transparent;
+            --progress-bar-color: transparent;
 
-    animate()
-</script>
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <model-viewer
+        id="helmet"
+        src="./helmet_apollo_11.glb"
+
+        interaction-prompt="none"
+
+        shadow-intensity="0"
+        exposure="1"
+        environment-image="neutral"
+
+        camera-orbit="0deg 75deg 105%"
+
+        style="background: transparent !important;">
+    </model-viewer>
+
+    <script>
+        const helmet = document.getElementById("helmet")
+
+        let targetProgress = 0
+        let currentProgress = 0
+
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max)
+        }
+
+        /*
+        Recebe do Framer:
+        {
+            type: "PN_SCROLL",
+            progress: 0.0 até 1.0
+        }
+        */
+
+        window.addEventListener("message", (event) => {
+            if (!event.data) return
+            if (event.data.type !== "PN_SCROLL") return
+
+            const value = Number(event.data.progress)
+
+            if (!Number.isFinite(value)) return
+
+            targetProgress = clamp(value, 0, 1)
+        })
+
+        function animate() {
+
+            /*
+            INTERPOLAÇÃO
+
+            Faz a câmera alcançar a posição desejada
+            suavemente, sem movimentos secos.
+            */
+
+            currentProgress +=
+                (targetProgress - currentProgress) * 0.055
+
+
+            /*
+            ÓRBITA HORIZONTAL
+
+            0 → 0 graus
+            1 → 450 graus
+
+            Isso significa 1 volta completa +
+            mais 90 graus.
+            */
+
+            const orbit =
+                currentProgress * 450
+
+
+            /*
+            MOVIMENTO VERTICAL
+
+            Começa olhando levemente de cima.
+
+            Conforme o scroll avança,
+            a câmera "desce" ao redor do capacete.
+            */
+
+            const verticalStart = 68
+            const verticalEnd = 92
+
+            const vertical =
+                verticalStart +
+                (verticalEnd - verticalStart) *
+                currentProgress
+
+
+            /*
+            DISTÂNCIA DA CÂMERA
+
+            Começa relativamente próxima.
+
+            Afasta um pouco durante a jornada
+            para dar sensação de profundidade.
+            */
+
+            const distanceStart = 100
+            const distanceEnd = 118
+
+            const distance =
+                distanceStart +
+                (distanceEnd - distanceStart) *
+                currentProgress
+
+
+            /*
+            MICRO MOVIMENTO ORGÂNICO
+
+            Muito pequeno.
+
+            Serve apenas para evitar sensação
+            completamente mecânica.
+            */
+
+            const microMovement =
+                Math.sin(currentProgress * Math.PI * 4) * 1.5
+
+
+            /*
+            APLICA A POSIÇÃO DA CÂMERA
+            */
+
+            helmet.cameraOrbit =
+                `${orbit}deg ${vertical + microMovement}deg ${distance}%`
+
+
+            requestAnimationFrame(animate)
+        }
+
+
+        /*
+        POSIÇÃO INICIAL
+        */
+
+        helmet.addEventListener("load", () => {
+
+            helmet.cameraOrbit =
+                "0deg 68deg 100%"
+
+            animate()
+        })
+    </script>
+
+</body>
+</html>
